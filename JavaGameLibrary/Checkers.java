@@ -8,6 +8,7 @@ public class Checkers extends JFrame {
     private final int GRID_SIZE = 8;
     private final Piece[][] board = new Piece[GRID_SIZE][GRID_SIZE];
     private final JButton[][] tiles = new JButton[GRID_SIZE][GRID_SIZE];
+    private int totalPieces = 24;
     private int currentPlayer = 1;
     private int[] pieceToMove = null;
     private int[] placeToMove = null;
@@ -42,8 +43,6 @@ public class Checkers extends JFrame {
         public void makeKing() {
             isKing = true;
         }
-
-
     }
 
     private void initializeGame() {
@@ -66,6 +65,7 @@ public class Checkers extends JFrame {
             }
         }
     }
+
     private void clearBoard() {
         // Iterate over the board and clear all cells
         for (int row = 0; row < GRID_SIZE; row++) {
@@ -108,7 +108,6 @@ public class Checkers extends JFrame {
         }
         return false;
     }
-    
 
     private void movePiece(int[] pos1, int[] pos2) {
         int row1 = pos1[0];
@@ -118,10 +117,11 @@ public class Checkers extends JFrame {
         board[row2][col2] = board[row1][col1];
         board[row1][col1] = null;
         // Update the UI
-        tiles[row2][col2].setText("●");
+        tiles[row2][col2].setText(board[row2][col2].isKing() == true ? "♔" : "●"); 
         tiles[row2][col2].setForeground(currentPlayer == 1 ? Color.RED : Color.ORANGE);
         tiles[row1][col1].setText("");
     }
+    
     /* 
     * Six possible moves in Checkers:
     * 1. Normal move: 1 step diagonally
@@ -175,10 +175,21 @@ public class Checkers extends JFrame {
             movePiece(pos1, pos2);
             board[midRow][midCol] = null; // Remove captured piece
             tiles[midRow][midCol].setText(""); // Update UI
+            totalPieces--; // Decrement total pieces
+            checkGameState(); // Check if the game is over
             if (!checkExtraMoves(pos2)) {
                 currentPlayer = currentPlayer == 1 ? 2 : 1; // Switch player
             }
         }
+        // Activate king status if a piece reaches the opposite end of the board
+         if (row2 == 0 && piece.getPlayer() == 1) {
+            board[row2][col2].makeKing();
+            tiles[row2][col2].setText("♔");
+         } else if (row2 == GRID_SIZE - 1 && piece.getPlayer() == 2) {
+            board[row2][col2].makeKing();
+            tiles[row2][col2].setText("♔");
+         }
+         
     }
 
     private void setupUI() {
@@ -191,6 +202,7 @@ public class Checkers extends JFrame {
                 tile.setPreferredSize(new Dimension(TILE_SIZE, TILE_SIZE));
                 tile.setOpaque(true);
                 tile.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+                tile.setFont(new Font("Arial Unicode MS", Font.BOLD, 30));
                 if ((row + col) % 2 == 0) {
                     tile.setBackground(Color.WHITE);
                 } else {
@@ -200,7 +212,7 @@ public class Checkers extends JFrame {
                 if (board[row][col] != null) {
                     Piece piece = board[row][col];
                     tile.setText("●"); 
-                    tile.setFont(new Font("Arial", Font.BOLD, 30));
+                    tile.setFont(new Font("Arial Unicode MS", Font.BOLD, 30));
                     tile.setHorizontalAlignment(JTextField.CENTER);
                     tile.setVerticalAlignment(JTextField.CENTER);
                     tile.setForeground(piece.getPlayer() == 1 ? Color.RED : Color.ORANGE);
@@ -243,7 +255,78 @@ public class Checkers extends JFrame {
         }
 
     }
+
+    private void checkGameState() {
+        int player1Pieces = 0;
+        int player2Pieces = 0;
+        if (totalPieces > 12) {
+            return; // Game is not over
+        }
+        // Check if player 1 has no pieces left
+        for (Piece[] row : board) {
+            for (Piece piece : row) {
+                if (piece != null && piece.getPlayer() == 1) {
+                    player1Pieces++;    
+                } else if (piece != null && piece.getPlayer() == 2) {
+                    player2Pieces++;
+                }
+            }
+        }
+        if (player1Pieces == 0) {
+            handleGameOver("Player 2 wins!");
+        } else if (player2Pieces == 0) {
+            handleGameOver("Player 1 wins!");
+            
+        }
+    }
+
+    private void handleGameOver(String message) {
+        SwingUtilities.invokeLater(() -> {
+                String[] options = {"Replay", "Main Menu"};
+                int choice = JOptionPane.showOptionDialog(
+                    this,
+                    message,
+                    "Game Over",
+                    JOptionPane.DEFAULT_OPTION,
+                    JOptionPane.INFORMATION_MESSAGE,
+                    null,
+                    options,
+                    options[0]
+                );
+        
+                if (choice == 0) {
+                    restartGame();
+                    initializeGame();
+                } else {
+                    dispose(); // Close the current window
+                    new GameLauncher(); // Assuming GameLauncher is the main menu class
+            }
+        });
+    }
+    private void restartGame() {
+        totalPieces = 24;
+        currentPlayer = 1;
+        pieceToMove = null;
+        placeToMove = null;
+        initializeGame();
+        for (int row = 0; row < GRID_SIZE; row++) {
+            for (int col = 0; col < GRID_SIZE; col++) {
+                if ((row + col) % 2 != 0) {
+                    if (board[row][col] != null) {
+                        Piece piece = board[row][col];
+                        tiles[row][col].setText("●"); 
+                        tiles[row][col].setForeground(piece.getPlayer() == 1 ? Color.RED : Color.ORANGE);
+                    } else {
+                        tiles[row][col].setText("");
+                    }
+                }
+            }
+        }
+    }
     
-    
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(Checkers::new);
+    }
 }
+    
 
