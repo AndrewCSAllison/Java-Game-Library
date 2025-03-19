@@ -10,16 +10,13 @@ public class Checkers extends JFrame {
     private final JButton[][] tiles = new JButton[GRID_SIZE][GRID_SIZE];
     private int totalPieces = 24;
     private int currentPlayer = 1;
+    private JLabel currentPlayerLabel = null;
     private int[] pieceToMove = null;
     private int[] placeToMove = null;
+    private boolean isSinglePlayer = false;
     
     public Checkers() {
-        setTitle("Checkers Game");
-        setSize(GRID_SIZE * TILE_SIZE, GRID_SIZE * TILE_SIZE);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLocationRelativeTo(null);
-        initializeGame();
-        setupUI();
+        showHomeScreen();
     }
 
     // Inner Piece object class to manage player pieces & king status
@@ -46,10 +43,10 @@ public class Checkers extends JFrame {
     }
 
     private void initializeGame() {
-        setupBoard();
+        initializeBoard();
     }
 
-    private void setupBoard() {
+    private void initializeBoard() {
         // Clear any pre-existing board pieces
         clearBoard();
         // Setup player 1 and player 2 pieces
@@ -192,8 +189,37 @@ public class Checkers extends JFrame {
          
     }
 
-    private void setupUI() {
-        JPanel mainPanel = new JPanel(new BorderLayout());
+    private void createGUI() {
+        // Window frame setup
+        JFrame frame = new JFrame("Checkers Game");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setLocationRelativeTo(null);
+        frame.setSize(600,600);
+        frame.setLayout(new BorderLayout());
+
+        // Score panel at the top
+        JPanel scorePanel = new JPanel();
+        scorePanel.setLayout(new GridLayout(1, 2));
+        scorePanel.setBackground(Color.GRAY);
+
+        // Player score labels
+        JLabel player1Label = new JLabel("Player 1: ", SwingConstants.CENTER);
+        JLabel player2Label = new JLabel("Player 2: ", SwingConstants.CENTER);
+        player1Label.setFont(new Font("Arial", Font.BOLD, 20));
+        player2Label.setFont(new Font("Arial", Font.BOLD, 20));
+        player1Label.setForeground(Color.RED);
+        player2Label.setForeground(Color.ORANGE);
+        scorePanel.add(player1Label);
+        scorePanel.add(player2Label);
+
+        // Turn label at the bottom
+        currentPlayerLabel = new JLabel("Player 1's Turn", SwingConstants.CENTER);
+        currentPlayerLabel.setFont(new Font("Arial", Font.BOLD, 20));
+        currentPlayerLabel.setForeground(Color.RED);
+        currentPlayerLabel.setOpaque(true);
+        currentPlayerLabel.setBackground(Color.GRAY);
+
+        // Main panel and board panel setup
         JPanel boardPanel = new JPanel(new GridLayout(GRID_SIZE, GRID_SIZE));
         boardPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         for (int row = 0; row < GRID_SIZE; row++) {
@@ -221,9 +247,37 @@ public class Checkers extends JFrame {
                 boardPanel.add(tile);
             }
         }
-        mainPanel.add(boardPanel, BorderLayout.CENTER);
-        add(mainPanel);
-        setVisible(true);
+
+        // Add panels to the main frame
+        frame.add(scorePanel, BorderLayout.NORTH);
+        frame.add(boardPanel, BorderLayout.CENTER);
+        frame.add(currentPlayerLabel, BorderLayout.SOUTH);
+        frame.setVisible(true);
+    }
+
+    private void showHomeScreen() {
+        // Implement the main menu screen here
+        String[] options = {"Singleplayer", "Two-Player"};
+        int choice = JOptionPane.showOptionDialog(
+                null,
+                "Choose Game Mode:",
+                "Checkers Game",
+                JOptionPane.DEFAULT_OPTION,
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                options,
+                options[0]
+        );
+
+        if (choice == 0) {
+            isSinglePlayer = true;
+        } else if (choice == 1) {
+            isSinglePlayer = false;
+        } else {
+            System.exit(0);
+        }
+        initializeBoard();
+        createGUI();
     }
 
     private class CellInputListener implements ActionListener {
@@ -252,6 +306,13 @@ public class Checkers extends JFrame {
                 pieceToMove = null;
                 placeToMove = null;
             }
+            if (currentPlayer == 1) {
+                currentPlayerLabel.setText("Player 1's Turn");
+                currentPlayerLabel.setForeground(Color.RED);
+            } else {
+                currentPlayerLabel.setText("Player 2's Turn");
+                currentPlayerLabel.setForeground(Color.ORANGE);
+            }
         }
 
     }
@@ -262,7 +323,7 @@ public class Checkers extends JFrame {
         if (totalPieces > 12) {
             return; // Game is not over
         }
-        // Check if player 1 has no pieces left
+        // Count the number of pieces each player has remaining
         for (Piece[] row : board) {
             for (Piece piece : row) {
                 if (piece != null && piece.getPlayer() == 1) {
@@ -276,10 +337,10 @@ public class Checkers extends JFrame {
             handleGameOver("Player 2 wins!");
         } else if (player2Pieces == 0) {
             handleGameOver("Player 1 wins!");
-            
         }
     }
 
+    // Display game over message and prompt for replay or main menu
     private void handleGameOver(String message) {
         SwingUtilities.invokeLater(() -> {
                 String[] options = {"Replay", "Main Menu"};
@@ -303,6 +364,8 @@ public class Checkers extends JFrame {
             }
         });
     }
+
+    // Reset the game state, pieces, board, and UI
     private void restartGame() {
         totalPieces = 24;
         currentPlayer = 1;
