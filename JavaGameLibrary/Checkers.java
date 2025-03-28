@@ -1,7 +1,8 @@
 import java.awt.*;
+import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import javax.swing.*;
+import java.util.ArrayList;
 
 public class Checkers extends JFrame {
     private final int TILE_SIZE = 50;
@@ -340,6 +341,40 @@ public class Checkers extends JFrame {
         }
     }
 
+    private void computerMove() {
+        ArrayList<int[]> computerPieces = new ArrayList<>();
+        for (int row = 0; row < GRID_SIZE; row++) {
+            for (int col = 0; col < GRID_SIZE; col++) {
+                if ((row + col) % 2 == 1) {
+                    if (board[row][col] != null) {
+                        if (board[row][col].getPlayer() == 2) {
+                            computerPieces.add(new int[]{row,col});
+                        }
+                    }
+                }
+            }
+        }
+
+
+        if (totalPieces == 24 || !tryBestMove()) {
+            makeRandomMove();
+        } else {
+            
+        }
+    }
+
+    // Scan the board and record the positions of all the computer's pieces
+    // Try moving each piece one at a time, recording which one results in the most pieces being taken
+
+    private boolean tryBestMove() {
+        
+        return false;
+    }
+
+    private void makeRandomMove() {
+
+    }
+
     // Display game over message and prompt for replay or main menu
     private void handleGameOver(String message) {
         SwingUtilities.invokeLater(() -> {
@@ -356,7 +391,7 @@ public class Checkers extends JFrame {
                 );
         
                 if (choice == 0) {
-                    restartGame();
+                    resetGame();
                     initializeGame();
                 } else {
                     dispose(); // Close the current window
@@ -366,7 +401,7 @@ public class Checkers extends JFrame {
     }
 
     // Reset the game state, pieces, board, and UI
-    private void restartGame() {
+    private void resetGame() {
         totalPieces = 24;
         currentPlayer = 1;
         pieceToMove = null;
@@ -374,7 +409,7 @@ public class Checkers extends JFrame {
         initializeGame();
         for (int row = 0; row < GRID_SIZE; row++) {
             for (int col = 0; col < GRID_SIZE; col++) {
-                if ((row + col) % 2 != 0) {
+                if ((row + col) % 2 == 1) {
                     if (board[row][col] != null) {
                         Piece piece = board[row][col];
                         tiles[row][col].setText("●"); 
