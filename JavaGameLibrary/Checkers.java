@@ -1,26 +1,33 @@
 import java.awt.*;
-import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
+import javax.swing.*;
 
 public class Checkers extends JFrame {
+    // Constants for board and tile size
     private final int TILE_SIZE = 50;
     private final int GRID_SIZE = 8;
     private final Piece[][] board = new Piece[GRID_SIZE][GRID_SIZE];
     private final JButton[][] tiles = new JButton[GRID_SIZE][GRID_SIZE];
+    // Game state variables
+    private int player1Score = 0;
+    private int player2Score = 0;
     private int totalPieces = 24;
     private int currentPlayer = 1;
-    private JLabel currentPlayerLabel = null;
     private int[] pieceToMove = null;
     private int[] placeToMove = null;
     private boolean isSinglePlayer = false;
+    // Score and player labels
+    private final JLabel currentPlayerLabel = new JLabel("Player 1's Turn", SwingConstants.CENTER);
+    private final JLabel player1Label = new JLabel("Player 1: " + player1Score, SwingConstants.CENTER);
+    private final JLabel player2Label = new JLabel("Player 2: " + player2Score, SwingConstants.CENTER);
     
     public Checkers() {
         showHomeScreen();
     }
 
-    // Inner Piece object class to manage player pieces & king status
+    // Piece object class to manage player piece ownership & king status
     private static class Piece {
         private final int player;
         private boolean isKing;
@@ -43,13 +50,7 @@ public class Checkers extends JFrame {
         }
     }
 
-    private void initializeGame() {
-        initializeBoard();
-    }
-
     private void initializeBoard() {
-        // Clear any pre-existing board pieces
-        clearBoard();
         // Setup player 1 and player 2 pieces
         for (int row = 0; row < GRID_SIZE; row++) {
             for (int col = 0; col < GRID_SIZE; col++) {
@@ -64,13 +65,33 @@ public class Checkers extends JFrame {
         }
     }
 
-    private void clearBoard() {
-        // Iterate over the board and clear all cells
-        for (int row = 0; row < GRID_SIZE; row++) {
-            for (int col = 0; col < GRID_SIZE; col++) {
-                board[row][col] = null;
-            }
-        }
+    private void movePiece(int[] pos1, int[] pos2) {
+        int row1 = pos1[0];
+        int col1 = pos1[1];
+        int row2 = pos2[0];
+        int col2 = pos2[1];
+        int midRow = (row1 + row2) / 2;
+        int midCol = (col1 + col2) / 2;
+        board[row2][col2] = board[row1][col1];
+        board[row1][col1] = null;
+        // Clear captured piece from game memory 
+        board[midRow][midCol] = null; 
+        totalPieces--; // Decrement total pieces
+    }
+
+    private void updateUI(int[] pos1, int[] pos2) {
+        int row1 = pos1[0];
+        int col1 = pos1[1];
+        int row2 = pos2[0];
+        int col2 = pos2[1];
+        int midRow = (row1 + row2) / 2;
+        int midCol = (col1 + col2) / 2;
+        tiles[row2][col2].setText(board[row2][col2].isKing() == true ? "♔" : "●"); 
+        tiles[row2][col2].setForeground(currentPlayer == 1 ? Color.RED : Color.ORANGE);
+        tiles[row1][col1].setText("");
+        // Clear the UI tile of the captured piece
+        tiles[midRow][midCol].setText(""); 
+
     }
 
     private boolean checkExtraMoves(int[] pos) {
@@ -80,6 +101,7 @@ public class Checkers extends JFrame {
         
         if (piece == null) return false; // No piece, no extra move 
         int[][] directions;
+        // Determine which directions the current piece can jump based on its type
         if (piece.isKing()) {
             directions = new int[][]{{-2, -2}, {-2, 2}, {2, -2}, {2, 2}}; // Kings move both directions
         } else if (piece.getPlayer() == 1) {
@@ -87,7 +109,8 @@ public class Checkers extends JFrame {
         } else {
             directions = new int[][]{{2, -2}, {2, 2}}; // Player 2 moves downwards
         }
-    
+        
+        // Check for possible jumps in all directions
         for (int[] dir : directions) {
             int newRow = row + dir[0];
             int newCol = col + dir[1];
@@ -106,19 +129,6 @@ public class Checkers extends JFrame {
         }
         return false;
     }
-
-    private void movePiece(int[] pos1, int[] pos2) {
-        int row1 = pos1[0];
-        int col1 = pos1[1];
-        int row2 = pos2[0];
-        int col2 = pos2[1];
-        board[row2][col2] = board[row1][col1];
-        board[row1][col1] = null;
-        // Update the UI
-        tiles[row2][col2].setText(board[row2][col2].isKing() == true ? "♔" : "●"); 
-        tiles[row2][col2].setForeground(currentPlayer == 1 ? Color.RED : Color.ORANGE);
-        tiles[row1][col1].setText("");
-    }
     
     /* 
     * Six possible moves in Checkers:
@@ -129,7 +139,7 @@ public class Checkers extends JFrame {
     * 5. King capture move: 2 steps diagonally in any direction to capture opponent's piece
     * 6. King multiple capture move: Capture multiple opponent's pieces in one turn (any direction)
     */ 
-    private void validMove(int[] pos1, int[] pos2) {
+    private boolean isValidMove(int[] pos1, int[] pos2) {
         int row1 = pos1[0];
         int col1 = pos1[1];
         int row2 = pos2[0];
@@ -137,57 +147,123 @@ public class Checkers extends JFrame {
         Piece piece = board[row1][col1];
         if (piece.getPlayer() != currentPlayer) {
             System.out.println("Invalid move: Not your piece!");
-            return;
+            return false;
         }
         if (board[row2][col2] != null) {
             System.out.println("Invalid move: Destination is occupied!");
-            return;
+            return false;
         }
         if (!piece.isKing() && currentPlayer == 1 && row1 < row2) {
             System.out.println("Invalid move: Only kings can move backwards!");
-            return;
+            return false;
         } else if (!piece.isKing() && currentPlayer == 2 && row1 > row2) {
             System.out.println("Invalid move: Only kings can move backwards!");
-            return;
+            return false;
         }
         // Check if the move is a simple one space move
         if (Math.abs(row2 - row1) == 1 && Math.abs(col2 - col1) == 1) {
             movePiece(pos1, pos2);
-            currentPlayer = currentPlayer == 1 ? 2 : 1; // Switch player
+            updateUI(pos1, pos2);
+            swapPlayer();
         // Check if the move is a single capture move
         } else if (Math.abs(row2-row1) == 2 && Math.abs(col2-col1) == 2) {
-            int midRow = (row1 + row2) / 2;
-            int midCol = (col1 + col2) / 2;
-            if (board[midRow][midCol] == null) {
-                System.out.println("Invalid move: No piece to capture!");
-                return;
-            }
-            if (board[midRow][midCol].getPlayer() == currentPlayer) {
-                System.out.println("Invalid move: Cannot capture your own piece!");
-                return;
-            }
-            if (board[row2][col2] != null && board[row2][col2].getPlayer() == currentPlayer) {
-                System.out.println("Invalid move: Cannot capture your own piece!");
-                return;
-            }
             movePiece(pos1, pos2);
-            board[midRow][midCol] = null; // Remove captured piece
-            tiles[midRow][midCol].setText(""); // Update UI
-            totalPieces--; // Decrement total pieces
+            updateUI(pos1, pos2);
             checkGameState(); // Check if the game is over
             if (!checkExtraMoves(pos2)) {
-                currentPlayer = currentPlayer == 1 ? 2 : 1; // Switch player
+                swapPlayer(); // If no extra moves, switch player
             }
         }
-        // Activate king status if a piece reaches the opposite end of the board
-         if (row2 == 0 && piece.getPlayer() == 1) {
-            board[row2][col2].makeKing();
-            tiles[row2][col2].setText("♔");
-         } else if (row2 == GRID_SIZE - 1 && piece.getPlayer() == 2) {
-            board[row2][col2].makeKing();
-            tiles[row2][col2].setText("♔");
-         }
-         
+        activateKing(row2, col2);
+        return true;
+    }
+
+    // Swap the current player
+    private void swapPlayer() {
+        currentPlayer = currentPlayer == 1 ? 2 : 1;
+        currentPlayerLabel.setText("Player " + currentPlayer + "'s Turn");
+        currentPlayerLabel.setForeground(currentPlayer == 1 ? Color.RED : Color.ORANGE);
+    }
+
+    // Activate king status if a piece reaches the opposite end of the board
+    private void activateKing(int row, int col) {
+        Piece piece = board[row][col];
+        if (piece.getPlayer() == 1 && row == 0) {
+            piece.makeKing();
+            tiles[row][col].setText("♔");
+        } else if (piece.getPlayer() == 2 && row == GRID_SIZE - 1) {
+            piece.makeKing();
+            tiles[row][col].setText("♔");
+        }
+    }
+
+    private Piece[][] copyBoard() {
+        Piece[][] newBoard = new Piece[GRID_SIZE][GRID_SIZE];
+        for (int row = 0; row < GRID_SIZE; row++) {
+            for (int col = 0; col < GRID_SIZE; col++) {
+                if (board[row][col] != null) {
+                    newBoard[row][col] = new Piece(board[row][col].getPlayer(), board[row][col].isKing());
+                }
+            }
+        }
+        return newBoard;
+    }
+
+    private int evaluateBoard(Piece[][] board) {
+        int score = 0;
+        
+        for (int row = 0; row < GRID_SIZE; row++) {
+            for (int col = 0; col < GRID_SIZE; col++) {
+                Piece piece = board[row][col];
+                if (piece != null) {
+                    if (piece.getPlayer() == 1) {
+                        score += (piece.isKing() ? 3 : 1);
+                    } else if (piece.getPlayer() == 2) {
+                        score -= (piece.isKing() ? 3 : 1);
+                    }
+                }
+            }
+        }
+    
+        return score;
+    }
+    
+    private ArrayList<int[][]> getAllPossibleMoves() {
+        ArrayList<int[][]> possibleMoves = new ArrayList<>();
+        for (int row = 0; row < GRID_SIZE; row++) {
+            for (int col = 0; col < GRID_SIZE; col++) {
+                Piece piece = board[row][col];
+                if (piece != null && piece.getPlayer() == currentPlayer) {
+                    addPossibleMovesForPiece(piece, row, col, possibleMoves);
+                }
+            }
+        }
+        return possibleMoves;
+    }
+
+
+    private void addPossibleMovesForPiece(Piece piece, int row, int col, ArrayList<int[][]> possibleMoves) {
+        int[][] directions;
+        if (piece.isKing()) {
+            directions = new int[][]{{-1, -1}, {-1, 1}, {1, -1}, {1, 1}}; // Kings move both directions
+        } else if (piece.getPlayer() == 1) {
+            directions = new int[][]{{-1, -1}, {-1, 1}}; // Player 1 moves upwards
+        } else {
+            directions = new int[][]{{1, -1}, {1, 1}}; // Player 2 moves downwards
+        }
+        for (int[] dir : directions) {
+            int newRow = row + dir[0];
+            int newCol = col + dir[1];
+            if (isValidMove(new int[]{row, col}, new int[]{newRow, newCol})) {
+                possibleMoves.add(new int[][]{{row, col}, {newRow, newCol}});
+            }
+            // Check for captures
+            newRow = row + (dir[0] * 2);
+            newCol = col + (dir[1] * 2);
+            if (isValidMove(new int[]{row, col}, new int[]{newRow, newCol})) {
+                possibleMoves.add(new int[][]{{row, col}, {newRow, newCol}});
+            }
+        }
     }
 
     private void createGUI() {
@@ -204,8 +280,6 @@ public class Checkers extends JFrame {
         scorePanel.setBackground(Color.GRAY);
 
         // Player score labels
-        JLabel player1Label = new JLabel("Player 1: ", SwingConstants.CENTER);
-        JLabel player2Label = new JLabel("Player 2: ", SwingConstants.CENTER);
         player1Label.setFont(new Font("Arial", Font.BOLD, 20));
         player2Label.setFont(new Font("Arial", Font.BOLD, 20));
         player1Label.setForeground(Color.RED);
@@ -214,7 +288,6 @@ public class Checkers extends JFrame {
         scorePanel.add(player2Label);
 
         // Turn label at the bottom
-        currentPlayerLabel = new JLabel("Player 1's Turn", SwingConstants.CENTER);
         currentPlayerLabel.setFont(new Font("Arial", Font.BOLD, 20));
         currentPlayerLabel.setForeground(Color.RED);
         currentPlayerLabel.setOpaque(true);
@@ -270,19 +343,17 @@ public class Checkers extends JFrame {
                 options[0]
         );
 
-        if (choice == 0) {
-            isSinglePlayer = true;
-        } else if (choice == 1) {
-            isSinglePlayer = false;
-        } else {
-            System.exit(0);
+        switch (choice) {
+            case 0 -> isSinglePlayer = true;
+            case 1 -> isSinglePlayer = false;
+            default -> System.exit(0);
         }
         initializeBoard();
         createGUI();
     }
 
     private class CellInputListener implements ActionListener {
-        private int row, col;
+        private final int row, col;
 
         public CellInputListener(int row, int col) {
             this.row = row;
@@ -301,19 +372,13 @@ public class Checkers extends JFrame {
                 System.out.println("Destination selected: " + row + ", " + col);
 
                 // Now we have two clicks, validate the move
-                validMove(pieceToMove, placeToMove);
+                isValidMove(pieceToMove, placeToMove);
 
                 // Reset selection for next move
                 pieceToMove = null;
                 placeToMove = null;
             }
-            if (currentPlayer == 1) {
-                currentPlayerLabel.setText("Player 1's Turn");
-                currentPlayerLabel.setForeground(Color.RED);
-            } else {
-                currentPlayerLabel.setText("Player 2's Turn");
-                currentPlayerLabel.setForeground(Color.ORANGE);
-            }
+            
         }
 
     }
@@ -335,44 +400,12 @@ public class Checkers extends JFrame {
             }
         }
         if (player1Pieces == 0) {
+            player2Score++;
             handleGameOver("Player 2 wins!");
         } else if (player2Pieces == 0) {
+            player1Score++;
             handleGameOver("Player 1 wins!");
         }
-    }
-
-    private void computerMove() {
-        ArrayList<int[]> computerPieces = new ArrayList<>();
-        for (int row = 0; row < GRID_SIZE; row++) {
-            for (int col = 0; col < GRID_SIZE; col++) {
-                if ((row + col) % 2 == 1) {
-                    if (board[row][col] != null) {
-                        if (board[row][col].getPlayer() == 2) {
-                            computerPieces.add(new int[]{row,col});
-                        }
-                    }
-                }
-            }
-        }
-
-
-        if (totalPieces == 24 || !tryBestMove()) {
-            makeRandomMove();
-        } else {
-            
-        }
-    }
-
-    // Scan the board and record the positions of all the computer's pieces
-    // Try moving each piece one at a time, recording which one results in the most pieces being taken
-
-    private boolean tryBestMove() {
-        
-        return false;
-    }
-
-    private void makeRandomMove() {
-
     }
 
     // Display game over message and prompt for replay or main menu
@@ -392,7 +425,6 @@ public class Checkers extends JFrame {
         
                 if (choice == 0) {
                     resetGame();
-                    initializeGame();
                 } else {
                     dispose(); // Close the current window
                     new GameLauncher(); // Assuming GameLauncher is the main menu class
@@ -400,13 +432,15 @@ public class Checkers extends JFrame {
         });
     }
 
-    // Reset the game state, pieces, board, and UI
+    // Reset the game state, pieces, board, UI, and update scoreboard
     private void resetGame() {
         totalPieces = 24;
         currentPlayer = 1;
         pieceToMove = null;
         placeToMove = null;
-        initializeGame();
+        initializeBoard();
+        player1Label.setText("Player 1: " + player1Score);
+        player2Label.setText("Player 2: " + player2Score);
         for (int row = 0; row < GRID_SIZE; row++) {
             for (int col = 0; col < GRID_SIZE; col++) {
                 if ((row + col) % 2 == 1) {
@@ -426,5 +460,3 @@ public class Checkers extends JFrame {
         SwingUtilities.invokeLater(Checkers::new);
     }
 }
-    
-
