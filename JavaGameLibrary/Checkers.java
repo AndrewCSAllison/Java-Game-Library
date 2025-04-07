@@ -53,9 +53,9 @@ public class Checkers extends JFrame {
             for (int col = 0; col < GRID_SIZE; col++) {
                 if ((row + col) % 2 == 1) {
                     if (row < 3) {
-                        board[row][col] = new Piece(2, false); // Player 1 piece
+                        board[row][col] = new Piece(2, false); 
                     } else if (row >= GRID_SIZE - 3) {
-                        board[row][col] = new Piece(1, false); // Player 2 piece
+                        board[row][col] = new Piece(1, false); 
                     }
                 }
             }
@@ -85,6 +85,7 @@ public class Checkers extends JFrame {
         tiles[pos1[0]][pos1[1]].setText("");
     }
 
+    // Check if the player has any extra moves available after a capture
     private boolean checkExtraMoves(int[] pos) {
         int row = pos[0];
         int col = pos[1];
@@ -105,7 +106,6 @@ public class Checkers extends JFrame {
             int newCol = col + dir[1];
             int midRow = row + dir[0] / 2;
             int midCol = col + dir[1] / 2;
-            // Check if new position is within bounds and empty
             if (isWithinBounds(newRow, newCol)) {
                 if (board[newRow][newCol] == null) { // Destination is empty
                     Piece midPiece = board[midRow][midCol];
@@ -207,7 +207,7 @@ public class Checkers extends JFrame {
 
     // Handle AI moves and update the game state accordingly
     private void aiMove() {
-        int[][] bestMove = determineMove(board);
+        int[][] bestMove = determineMove();
         if (bestMove != null) {
             int[] pos1 = bestMove[0];
             int[] pos2 = bestMove[1];
@@ -231,8 +231,7 @@ public class Checkers extends JFrame {
             activateKing(pos2[0], pos2[1]);
         }
     }
-    // Create a deep copy of the board for minimax evaluation
-    // to avoid modifying the original board during the evaluation process
+    // Create a deep copy of the board to simulate moves without affecting the original board
     private Piece[][] copyBoard(Piece[][] board) {
         Piece[][] newBoard = new Piece[GRID_SIZE][GRID_SIZE];
         for (int row = 0; row < GRID_SIZE; row++) {
@@ -245,103 +244,50 @@ public class Checkers extends JFrame {
         return newBoard;
     }
 
-    // Algorithm to determine and score the best move for the AI
-    private int[][] determineMove(Piece[][] boardCopy) {
-        ArrayList<int[][]> bestMoves = new ArrayList<>();
-        int bestScore = Integer.MIN_VALUE;  
-        ArrayList<int[][]> possibleMoves = getAllPossibleMoves(2); 
-        System.out.println("Possible Moves: " + possibleMoves.size());
-        for (int[][] move : possibleMoves) {
-            Piece[][] newBoard = copyBoard(board);
-            simulateMove(newBoard, move[0], move[1]);
-            int eval = evaluateBoard(boardCopy);
-            System.out.println("Possible Move: " + move[0][0] + "," + move[0][1] + " -> " + move[1][0] + "," + move[1][1]);
-            System.out.println("Score: " + eval);
-            if (eval > bestScore) {
-                bestScore = eval;
-                bestMoves.clear();
-                bestMoves.add(move);
-            } else if (eval == bestScore) {
-                bestMoves.add(move);
-            }
-        }
-        // Choose one random move out of the equally scoring ones
-        int[][] bestMove = bestMoves.isEmpty() ? null : bestMoves.get(new Random().nextInt(bestMoves.size()));
-        return bestMove; // Return the best move found
-    }
-    
-   
-
-
-    private void simulateMove(Piece[][] boardCopy, int[] pos1, int[] pos2) {
-        Piece movingPiece = boardCopy[pos1[0]][pos1[1]];
-        boardCopy[pos1[0]][pos1[1]] = null;
-        boardCopy[pos2[0]][pos2[1]] = movingPiece;
-        // Check if a piece is captured, remove it from the copied board
-        if (Math.abs(pos2[0] - pos1[0]) == 2 && Math.abs(pos2[1] - pos1[1]) == 2) {
-            int midRow = (pos1[0] + pos2[0]) / 2;
-            int midCol = (pos1[1] + pos2[1]) / 2;
-            boardCopy[midRow][midCol] = null; 
-        }
-        // Check if the piece becomes a king
-        if (movingPiece.getPlayer() == 1 && pos2[0] == 0) {
-            movingPiece.makeKing(); 
-        } else if (movingPiece.getPlayer() == 2 && pos2[0] == GRID_SIZE - 1) {
-            movingPiece.makeKing(); 
-        }
-    }
-
-    private int evaluateBoard(Piece[][] boardCopy) {
-        int score = 0;
-    
-        for (int row = 0; row < GRID_SIZE; row++) {
-            for (int col = 0; col < GRID_SIZE; col++) {
-                Piece piece = boardCopy[row][col];
-                if (piece != null) {
-                    if (piece.getPlayer() == 2 && !piece.isKing()) {
-                        score = row + 1; 
-                    }
-                }
-            }
-        }
-        return score;
-    }
-    
-    // Get all possible moves for the current player, prioritizing captures
-    private ArrayList<int[][]> getAllPossibleMoves(int player) {
+    // Algorithm to determine and score the best move for the AI (with basic heuristics)
+    // The AI will prioritize capturing moves, then protecting vulnerable pieces, and finally normal moves
+    // If no other options exist, it will select a random vulnerable move
+    private int[][] determineMove() {
         ArrayList<int[][]> captureMoves = new ArrayList<>();
         ArrayList<int[][]> normalMoves = new ArrayList<>();
         ArrayList<int[][]> vulnerableMoves = new ArrayList<>();
+        ArrayList<int[][]> protectiveMoves = new ArrayList<>();
+
+        getAllPossibleMoves(2, captureMoves, normalMoves, vulnerableMoves, protectiveMoves);
+
+        // Check if there are any capture moves available, if so, prioritize them
+        if (!captureMoves.isEmpty()) return captureMoves.get(new Random().nextInt(captureMoves.size()));
+    
+        // Try to protect vulnerable pieces if possible
+        if (!protectiveMoves.isEmpty()) return protectiveMoves.get(new Random().nextInt(protectiveMoves.size()));
+
+        // If no capture moves, check for normal moves, prioitizing non-vulnerable ones
+        ArrayList<int[][]> safeMoves = new ArrayList<>();
+        for (int[][] move : normalMoves) {
+            if (!isMoveVulnerable(move)) {
+                safeMoves.add(move);
+            }
+        }
+        if (!safeMoves.isEmpty()) return safeMoves.get(new Random().nextInt(safeMoves.size()));
         
+        // If no safe moves, return a random vulnerable move (since the only available moves are vulnerable)
+        return vulnerableMoves.get(new Random().nextInt(vulnerableMoves.size()));
+    }
+    
+    // Get all possible moves for the current player, including capture, normal, vulnerable, and protective moves
+    private void getAllPossibleMoves(int player, ArrayList<int[][]> captureMoves, 
+            ArrayList<int[][]> normalMoves, ArrayList<int[][]> vulnerableMoves, ArrayList<int[][]> protectiveMoves) {
+        protectiveMoves.addAll(getVulnerableComputerPieces()); 
         for (int row = 0; row < GRID_SIZE; row++) {
             for (int col = 0; col < GRID_SIZE; col++) {
                 Piece piece = board[row][col];
                 if (piece != null && piece.getPlayer() == player) {
-                    System.out.println("Piece: " + piece.getPlayer() + " at " + row + "," + col);
                     addPossibleMovesForPiece(piece, row, col, captureMoves, normalMoves, vulnerableMoves);
                 }
             }
-        }
-    
-        if (!captureMoves.isEmpty()) {
-            return captureMoves; // Prioritize captures
-        }
-        
-        // Prioritize normal moves that are NOT vulnerable
-        if (!normalMoves.isEmpty()) {
-            ArrayList<int[][]> safeMoves = new ArrayList<>();
-            for (int[][] move : normalMoves) {
-                if (!isMoveVulnerable(move)) { 
-                    safeMoves.add(move);
-                }
-            }
-            return safeMoves.isEmpty() ? normalMoves : safeMoves; // Default to normalMoves if all are vulnerable
-        }
-    
-        return vulnerableMoves; // Worst-case scenario, return vulnerable moves if nothing else is available
+        }        
     }
-    
-    
+     
     // Add possible moves for a piece based on its type and position
     private void addPossibleMovesForPiece(Piece piece, int row, int col, 
                                       ArrayList<int[][]> captureMoves, 
@@ -363,7 +309,7 @@ public class Checkers extends JFrame {
             if (isValidMove(new int[]{row, col}, new int[]{newRow, newCol})) {
                 int[][] move = new int[][]{{row, col}, {newRow, newCol}};
                 if (isMoveVulnerable(move)) {
-                    vulnerableMoves.add(move); // Store vulnerable moves separately
+                    vulnerableMoves.add(move);
                 } else {
                     normalMoves.add(move);
                 }
@@ -375,43 +321,119 @@ public class Checkers extends JFrame {
             if (isValidMove(new int[]{row, col}, new int[]{jumpRow, jumpCol})) {
                 captureMoves.add(new int[][]{{row, col}, {jumpRow, jumpCol}});
             }
-            // Printout all moves
-            for (int[][] move : captureMoves) {
-                System.out.println("Capture Move: " + move[0][0] + "," + move[0][1] + " -> " + move[1][0] + "," + move[1][1]);
-            }
-            for (int[][] move : normalMoves) {
-                System.out.println("Normal Move: " + move[0][0] + "," + move[0][1] + " -> " + move[1][0] + "," + move[1][1]);
-            }
-            for (int[][] move : vulnerableMoves) {
-                System.out.println("Vulnerable Move: " + move[0][0] + "," + move[0][1] + " -> " + move[1][0] + "," + move[1][1]);
-            }
         }
     }
 
+    // Simulate a move on a copy of the board to check for vulnerabilities
+    private void simulateMove(Piece[][] boardCopy, int[] pos1, int[] pos2) {
+        Piece movingPiece = boardCopy[pos1[0]][pos1[1]];
+        boardCopy[pos1[0]][pos1[1]] = null;
+        boardCopy[pos2[0]][pos2[1]] = movingPiece;
+        // Check if a piece is captured, remove it from the copied board
+        if (Math.abs(pos2[0] - pos1[0]) == 2 && Math.abs(pos2[1] - pos1[1]) == 2) {
+            int midRow = (pos1[0] + pos2[0]) / 2;
+            int midCol = (pos1[1] + pos2[1]) / 2;
+            boardCopy[midRow][midCol] = null; 
+        }
+        // Check if the piece becomes a king
+        if (movingPiece.getPlayer() == 1 && pos2[0] == 0) {
+            movingPiece.makeKing(); 
+        } else if (movingPiece.getPlayer() == 2 && pos2[0] == GRID_SIZE - 1) {
+            movingPiece.makeKing(); 
+        }
+    }
+
+    // Check if the move makes a piece vulnerable to being captured 
     private boolean isMoveVulnerable(int[][] move) {
         int newRow = move[1][0];
         int newCol = move[1][1];
-
+    
         Piece[][] boardCopy = copyBoard(board);
         simulateMove(boardCopy, move[0], move[1]);
+    
+        // Check if the moved piece is vulnerable in its new location
+        if (isPositionVulnerable(boardCopy, newRow, newCol)) {
+            return true;
+        }
+    
+        // Check if any other computer piece are vulnerable
+        for (int row = 0; row < GRID_SIZE; row++) {
+            for (int col = 0; col < GRID_SIZE; col++) {
+                Piece piece = boardCopy[row][col];
+                if (piece != null && piece.getPlayer() == 2) {
+                    if (isPositionVulnerable(boardCopy, row, col)) {
+                        return true;
+                    }
+                }
+            }
+        }
+    
+        return false;
+    }
 
+    // Check if a position is vulnerable to being captured by the opponent
+    private boolean isPositionVulnerable(Piece[][] boardState, int row, int col) {
         for (int[] dir : new int[][]{{-1, -1}, {-1, 1}, {1, -1}, {1, 1}}) {
-            int attackerRow = newRow + dir[0];
-            int attackerCol = newCol + dir[1];
-            int landingRow = newRow - dir[0];
-            int landingCol = newCol - dir[1];
-
+            int attackerRow = row + dir[0];
+            int attackerCol = col + dir[1];
+            int landingRow = row - dir[0];
+            int landingCol = col - dir[1];
+    
             if (isWithinBounds(attackerRow, attackerCol) && isWithinBounds(landingRow, landingCol)) {
-                Piece attacker = boardCopy[attackerRow][attackerCol];
-                if (attacker != null && attacker.getPlayer() == 1 && boardCopy[landingRow][landingCol] == null) {
-                    // Opponent piece is in position to jump onto our moved piece
+                Piece attacker = boardState[attackerRow][attackerCol];
+                if (attacker != null && attacker.getPlayer() == 1 && boardState[landingRow][landingCol] == null) {
                     return true;
                 }
             }
         }
         return false;
     }
-
+    
+    // Get list of moves for vulnerable pieces of the computer player that can escape capture
+    private ArrayList<int[][]> getVulnerableComputerPieces() {
+        ArrayList<int[][]> vulnerablePiecesWithEscapeMoves = new ArrayList<>();
+    
+        for (int row = 0; row < GRID_SIZE; row++) {
+            for (int col = 0; col < GRID_SIZE; col++) {
+                Piece piece = board[row][col];
+                if (piece != null && piece.getPlayer() == 2) { // Computer's pieces
+                    int[][] directions = piece.isKing()
+                        ? new int[][]{{-1, -1}, {-1, 1}, {1, -1}, {1, 1}}
+                        : new int[][]{{1, -1}, {1, 1}}; // Player 2 moves down
+    
+                    boolean isVulnerable = false;
+    
+                    // Check if any opponent can capture this piece
+                    for (int[] dir : new int[][]{{-1, -1}, {-1, 1}, {1, -1}, {1, 1}}) {
+                        int attackerRow = row + dir[0];
+                        int attackerCol = col + dir[1];
+                        int landingRow = row - dir[0];
+                        int landingCol = col - dir[1];
+    
+                        if (isWithinBounds(attackerRow, attackerCol) && isWithinBounds(landingRow, landingCol)) {
+                            Piece attacker = board[attackerRow][attackerCol];
+                            if (attacker != null && attacker.getPlayer() == 1 && board[landingRow][landingCol] == null) {
+                                isVulnerable = true;
+                            }
+                        }
+                    }
+    
+                    if (isVulnerable) {
+                        for (int[] dir : directions) {
+                            int newRow = row + dir[0];
+                            int newCol = col + dir[1];
+                            int[][] move = new int[][]{{row, col}, {newRow, newCol}};
+                            if (isValidMove(new int[]{row, col}, new int[]{newRow, newCol}) && !isMoveVulnerable(move)) {
+                                vulnerablePiecesWithEscapeMoves.add(move);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    
+        return vulnerablePiecesWithEscapeMoves;
+    }
     
     // Create the GUI for the game
     private void createGUI() {
@@ -472,8 +494,8 @@ public class Checkers extends JFrame {
         frame.setVisible(true);
     }
 
+    // Show the home screen to select game mode
     private void showHomeScreen() {
-        // Implement the main menu screen here
         String[] options = {"Singleplayer", "Two-Player"};
         int choice = JOptionPane.showOptionDialog(
                 null,
@@ -497,7 +519,7 @@ public class Checkers extends JFrame {
     // Listener for tile clicks to handle player input
     private class CellInputListener implements ActionListener {
         private final int row, col;
-        // Constructor to initialize row and column for the button
+
         public CellInputListener(int row, int col) {
             this.row = row;
             this.col = col;
@@ -521,7 +543,7 @@ public class Checkers extends JFrame {
                     placeToMove = null;
                     // Trigger AI move if in single-player mode
                     if (isSinglePlayer && currentPlayer == 2) {
-                        Timer timer = new Timer(500, event -> aiMove()); // 1000ms = 1 second delay
+                        Timer timer = new Timer(2000, event -> aiMove()); // 1000ms = 1 second delay
                         timer.setRepeats(false); // Ensure the timer only runs once
                         timer.start();
                     }
@@ -545,11 +567,11 @@ public class Checkers extends JFrame {
                 }
             }
         }
-        if (player1Pieces == 0 && getAllPossibleMoves(1).isEmpty()) {
+        if (player1Pieces == 0) {
             player2Score++;
             handleGameOver("Player 2 wins!");
             return true;
-        } else if (player2Pieces == 0 && getAllPossibleMoves(2).isEmpty()) {
+        } else if (player2Pieces == 0) {
             player1Score++;
             handleGameOver("Player 1 wins!");
             return true; 
@@ -584,19 +606,34 @@ public class Checkers extends JFrame {
     // Reset the game state, pieces, board, UI, and update scores
     private void resetGame() {
         currentPlayer = 1;
+
+        // Clear the board array
+        for (int row = 0; row < GRID_SIZE; row++) {
+            for (int col = 0; col < GRID_SIZE; col++) {
+                board[row][col] = null; // Clear the board
+            }
+        }
+
+        // Reinitialize the board with pieces
         initializeBoard();
+
+        // Update the score labels
         player1Label.setText("Player 1: " + player1Score);
         player2Label.setText("Player 2: " + player2Score);
+
+        // Update the UI tiles
         for (int row = 0; row < GRID_SIZE; row++) {
             for (int col = 0; col < GRID_SIZE; col++) {
                 if ((row + col) % 2 == 1) {
                     if (board[row][col] != null) {
                         Piece piece = board[row][col];
-                        tiles[row][col].setText("●"); 
+                        tiles[row][col].setText("●");
                         tiles[row][col].setForeground(piece.getPlayer() == 1 ? Color.RED : Color.ORANGE);
                     } else {
                         tiles[row][col].setText("");
                     }
+                } else {
+                    tiles[row][col].setText(""); // Ensure non-playable tiles are cleared
                 }
             }
         }
