@@ -71,6 +71,17 @@ public class HangmanGUI extends JFrame {
         topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.Y_AXIS));
         topPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
+        // Main menu window
+        JButton backButton = new JButton("Back to Menu");
+        backButton.addActionListener(e -> {
+            dispose(); // Close Hangman window
+            new GameLauncher(); // Open main menu
+        });
+
+        JPanel bottomPanel = new JPanel();
+        bottomPanel.add(backButton);
+        add(bottomPanel, BorderLayout.SOUTH);
+
         // Hangman panel for drawing the hangman figure
         hangmanPanel = new HangmanPanel();
         hangmanPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
