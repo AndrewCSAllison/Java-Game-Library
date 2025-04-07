@@ -86,6 +86,18 @@ public class MemoryMatchGame extends JFrame {
         mainPanel.add(gridPanel, BorderLayout.CENTER);
         mainPanel.add(statusLabel, BorderLayout.SOUTH);
 
+        // Back to Menu button
+        JButton backButton = new JButton("Back to Menu");
+        backButton.addActionListener(e -> {
+            dispose(); // Close Sudoku window
+            new GameLauncher(); // Open main menu
+        });
+
+        JPanel bottomPanel = new JPanel(new BorderLayout());
+        bottomPanel.add(statusLabel, BorderLayout.CENTER);
+        bottomPanel.add(backButton, BorderLayout.EAST);
+        mainPanel.add(bottomPanel, BorderLayout.SOUTH);
+
         add(mainPanel);
         setVisible(true);
     }
