@@ -46,31 +46,6 @@ public class Checkers extends JFrame {
             isKing = true;
         }
     }
-
-    // Class to manage the score and move of the AI
-    private class MoveScore {
-        private final int score;
-        private final int[][] move;
-
-        public MoveScore(int score, int[][] move) {
-            this.score = score;
-            this.move = move;
-        }
-        public int getScore() {
-            return score;
-        }
-        public int[][] getMove() {
-            return move;
-        }
-        @Override
-        public String toString() {
-            String moveString = "null";
-            if (move != null && move.length == 2) {
-                moveString = move[0][0] + "," + move[0][1] + " -> " + move[1][0] + "," + move[1][1];
-            }
-            return "Score: " + score + ", Move: " + moveString;
-        }
-    }
     
     // Setup player pieces on the board
     private void initializeBoard() {
@@ -131,7 +106,7 @@ public class Checkers extends JFrame {
             int midRow = row + dir[0] / 2;
             int midCol = col + dir[1] / 2;
             // Check if new position is within bounds and empty
-            if (newRow >= 0 && newRow < GRID_SIZE && newCol >= 0 && newCol < GRID_SIZE) {
+            if (isWithinBounds(newRow, newCol)) {
                 if (board[newRow][newCol] == null) { // Destination is empty
                     Piece midPiece = board[midRow][midCol];
                     if (midPiece != null && midPiece.getPlayer() != piece.getPlayer()) {
@@ -151,7 +126,7 @@ public class Checkers extends JFrame {
         int col2 = pos2[1];
         Piece piece = board[row1][col1];
         // Check if the move is within bounds
-        if (isWithinBounds(row2, col2)) {
+        if (!isWithinBounds(row2, col2)) {
             return false;
         }
         // Check if the piece is exist
@@ -221,8 +196,6 @@ public class Checkers extends JFrame {
         }
         // Only check for extra moves if the move is a capture
         if (Math.abs(pos2[0] - pos1[0]) == 2 && Math.abs(pos2[1] - pos1[1]) == 2) {
-            System.out.println("Extra moves? " + checkExtraMoves(pos2));
-            System.out.println(currentPlayer);
             if (!checkExtraMoves(pos2)) {
                 swapPlayer(); 
             }    
@@ -230,15 +203,14 @@ public class Checkers extends JFrame {
             swapPlayer(); 
         }
         activateKing(pos2[0], pos2[1]);
-        System.out.println(currentPlayer);
     }
 
     // Handle AI moves and update the game state accordingly
     private void aiMove() {
-        MoveScore bestMove = minimax(board, 3, true);
-        if (bestMove.getMove() != null) {
-            int[] pos1 = bestMove.getMove()[0];
-            int[] pos2 = bestMove.getMove()[1];
+        int[][] bestMove = determineMove(board);
+        if (bestMove != null) {
+            int[] pos1 = bestMove[0];
+            int[] pos2 = bestMove[1];
             movePiece(pos1, pos2);
             updateUI(pos1, pos2);
             if (checkGameState()) {
@@ -247,7 +219,7 @@ public class Checkers extends JFrame {
             // Only check for extra moves if the move is a capture
             if (Math.abs(pos2[0] - pos1[0]) == 2 && Math.abs(pos2[1] - pos1[1]) == 2) {
                 if (checkExtraMoves(pos2)) {
-                    Timer timer = new Timer(750, event -> aiMove());
+                    Timer timer = new Timer(2500, event -> aiMove());
                     timer.setRepeats(false); 
                     timer.start();
                 } else {
@@ -272,25 +244,20 @@ public class Checkers extends JFrame {
         }
         return newBoard;
     }
-    private MoveScore minimax(Piece[][] boardCopy, int depth, boolean isMaximizing) {
-        if (depth == 0 || checkGameState()) {
-            return new MoveScore(evaluateBoard(boardCopy), null);
-        }
-    
+
+    // Algorithm to determine and score the best move for the AI
+    private int[][] determineMove(Piece[][] boardCopy) {
         ArrayList<int[][]> bestMoves = new ArrayList<>();
-        int bestScore = isMaximizing ? Integer.MIN_VALUE : Integer.MAX_VALUE;
-        ArrayList<int[][]> possibleMoves = getAllPossibleMoves(isMaximizing ? 2 : 1);
-        
-        if (possibleMoves.isEmpty()) {
-            return new MoveScore(evaluateBoard(boardCopy), null); // No moves available, return evaluation
-        }
-    
+        int bestScore = Integer.MIN_VALUE;  
+        ArrayList<int[][]> possibleMoves = getAllPossibleMoves(2); 
+        System.out.println("Possible Moves: " + possibleMoves.size());
         for (int[][] move : possibleMoves) {
             Piece[][] newBoard = copyBoard(board);
             simulateMove(newBoard, move[0], move[1]);
-            int eval = minimax(newBoard, depth - 1, !isMaximizing).getScore();
-            System.out.println(eval);
-            if ((isMaximizing && eval > bestScore) || (!isMaximizing && eval < bestScore)) {
+            int eval = evaluateBoard(boardCopy);
+            System.out.println("Possible Move: " + move[0][0] + "," + move[0][1] + " -> " + move[1][0] + "," + move[1][1]);
+            System.out.println("Score: " + eval);
+            if (eval > bestScore) {
                 bestScore = eval;
                 bestMoves.clear();
                 bestMoves.add(move);
@@ -298,12 +265,9 @@ public class Checkers extends JFrame {
                 bestMoves.add(move);
             }
         }
-        for (int[][] move : bestMoves) {
-            System.out.println("Possible Move: " + move[0][0] + "," + move[0][1] + " -> " + move[1][0] + "," + move[1][1]);
-        }
         // Choose one random move out of the equally scoring ones
         int[][] bestMove = bestMoves.isEmpty() ? null : bestMoves.get(new Random().nextInt(bestMoves.size()));
-        return new MoveScore(bestScore, bestMove);
+        return bestMove; // Return the best move found
     }
     
    
@@ -334,25 +298,8 @@ public class Checkers extends JFrame {
             for (int col = 0; col < GRID_SIZE; col++) {
                 Piece piece = boardCopy[row][col];
                 if (piece != null) {
-                    int pieceValue = piece.isKing() ? 7 : 3;
-                    int positionValue = 0;
-    
-                    // Encourage advancing pieces
-                    if (!piece.isKing()) {
-                        positionValue = (piece.getPlayer() == 2) ? row : (GRID_SIZE - 1 - row);
-                        positionValue *= 1.5;
-                    }
-    
-                    // Calculate total value for the piece
-                    int totalValue = pieceValue + positionValue;
-                    System.out.println("Row: " + row + ", Col: " + col);
-                    System.out.println("Piece Player: " + piece.getPlayer() + ", Is King: " + piece.isKing());
-                    System.out.println("Piece Value: " + pieceValue + ", Position Value: " + positionValue + ", Total Value: " + totalValue);
-                    // Add or subtract based on the player
-                    if (piece.getPlayer() == 2) {
-                        score += totalValue; // AI's pieces
-                    } else {
-                        score -= totalValue; // Opponent's pieces
+                    if (piece.getPlayer() == 2 && !piece.isKing()) {
+                        score = row + 1; 
                     }
                 }
             }
@@ -370,6 +317,7 @@ public class Checkers extends JFrame {
             for (int col = 0; col < GRID_SIZE; col++) {
                 Piece piece = board[row][col];
                 if (piece != null && piece.getPlayer() == player) {
+                    System.out.println("Piece: " + piece.getPlayer() + " at " + row + "," + col);
                     addPossibleMovesForPiece(piece, row, col, captureMoves, normalMoves, vulnerableMoves);
                 }
             }
@@ -383,7 +331,7 @@ public class Checkers extends JFrame {
         if (!normalMoves.isEmpty()) {
             ArrayList<int[][]> safeMoves = new ArrayList<>();
             for (int[][] move : normalMoves) {
-                if (!isMoveVulnerable(move, player)) { 
+                if (!isMoveVulnerable(move)) { 
                     safeMoves.add(move);
                 }
             }
@@ -399,64 +347,71 @@ public class Checkers extends JFrame {
                                       ArrayList<int[][]> captureMoves, 
                                       ArrayList<int[][]> normalMoves, 
                                       ArrayList<int[][]> vulnerableMoves) {
-    int[][] directions;
-    if (piece.isKing()) {
-        directions = new int[][]{{-1, -1}, {-1, 1}, {1, -1}, {1, 1}}; // Kings move both directions
-    } else if (piece.getPlayer() == 1) {
-        directions = new int[][]{{-1, -1}, {-1, 1}}; // Player 1 moves upwards
-    } else {
-        directions = new int[][]{{1, -1}, {1, 1}}; // Player 2 moves downwards
-    }
-    
-    for (int[] dir : directions) { 
-        int newRow = row + dir[0];
-        int newCol = col + dir[1];
+        int[][] directions;
+        if (piece.isKing()) {
+            directions = new int[][]{{-1, -1}, {-1, 1}, {1, -1}, {1, 1}}; // Kings move both directions
+        } else if (piece.getPlayer() == 1) {
+            directions = new int[][]{{-1, -1}, {-1, 1}}; // Player 1 moves upwards
+        } else {
+            directions = new int[][]{{1, -1}, {1, 1}}; // Player 2 moves downwards
+        }
+        
+        for (int[] dir : directions) { 
+            int newRow = row + dir[0];
+            int newCol = col + dir[1];
 
-        if (isValidMove(new int[]{row, col}, new int[]{newRow, newCol})) {
-            int[][] move = new int[][]{{row, col}, {newRow, newCol}};
-            if (isMoveVulnerable(move, piece.getPlayer())) {
-                vulnerableMoves.add(move); // Store vulnerable moves separately
-            } else {
-                normalMoves.add(move);
+            if (isValidMove(new int[]{row, col}, new int[]{newRow, newCol})) {
+                int[][] move = new int[][]{{row, col}, {newRow, newCol}};
+                if (isMoveVulnerable(move)) {
+                    vulnerableMoves.add(move); // Store vulnerable moves separately
+                } else {
+                    normalMoves.add(move);
+                }
+            }
+
+            int jumpRow = row + (dir[0] * 2);
+            int jumpCol = col + (dir[1] * 2);
+ 
+            if (isValidMove(new int[]{row, col}, new int[]{jumpRow, jumpCol})) {
+                captureMoves.add(new int[][]{{row, col}, {jumpRow, jumpCol}});
+            }
+            // Printout all moves
+            for (int[][] move : captureMoves) {
+                System.out.println("Capture Move: " + move[0][0] + "," + move[0][1] + " -> " + move[1][0] + "," + move[1][1]);
+            }
+            for (int[][] move : normalMoves) {
+                System.out.println("Normal Move: " + move[0][0] + "," + move[0][1] + " -> " + move[1][0] + "," + move[1][1]);
+            }
+            for (int[][] move : vulnerableMoves) {
+                System.out.println("Vulnerable Move: " + move[0][0] + "," + move[0][1] + " -> " + move[1][0] + "," + move[1][1]);
             }
         }
-
-        int jumpRow = row + (dir[0] * 2);
-        int jumpCol = col + (dir[1] * 2);
-
-        if (isValidMove(new int[]{row, col}, new int[]{jumpRow, jumpCol})) {
-            captureMoves.add(new int[][]{{row, col}, {jumpRow, jumpCol}});
-        }
     }
-}
 
-    private boolean isMoveVulnerable(int[][] move, int player) {
+    private boolean isMoveVulnerable(int[][] move) {
         int newRow = move[1][0];
         int newCol = move[1][1];
-    
+
         Piece[][] boardCopy = copyBoard(board);
         simulateMove(boardCopy, move[0], move[1]);
 
-        boolean vulnerable = false;
-    
-        // Check if an opponent can capture the piece in this new position
-        int opponent = (player == 1) ? 2 : 1;
         for (int[] dir : new int[][]{{-1, -1}, {-1, 1}, {1, -1}, {1, 1}}) {
-            int oppRow = newRow + dir[0];
-            int oppCol = newCol + dir[1];
-            int jumpRow = newRow + (dir[0] * 2);
-            int jumpCol = newCol + (dir[1] * 2);
-    
-            if (isWithinBounds(oppRow, oppCol) && isWithinBounds(jumpRow, jumpCol) &&
-                boardCopy[oppRow][oppCol] != null && boardCopy[oppRow][oppCol].getPlayer() == opponent &&
-                boardCopy[jumpRow][jumpCol] == null) {
-                vulnerable = true;
-                break;
+            int attackerRow = newRow + dir[0];
+            int attackerCol = newCol + dir[1];
+            int landingRow = newRow - dir[0];
+            int landingCol = newCol - dir[1];
+
+            if (isWithinBounds(attackerRow, attackerCol) && isWithinBounds(landingRow, landingCol)) {
+                Piece attacker = boardCopy[attackerRow][attackerCol];
+                if (attacker != null && attacker.getPlayer() == 1 && boardCopy[landingRow][landingCol] == null) {
+                    // Opponent piece is in position to jump onto our moved piece
+                    return true;
+                }
             }
         }
-    
-        return vulnerable;
+        return false;
     }
+
     
     // Create the GUI for the game
     private void createGUI() {
