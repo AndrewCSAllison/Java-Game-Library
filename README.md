@@ -9,7 +9,6 @@ A collection of classic games implemented in **Java** using **Swing** for GUI de
 - **Sudoku** - Solve a randomly generated 9x9 Sudoku puzzle.
 - **Tic-Tac-Toe** - Play against another player or an AI opponent.
 - **2048** - Merge tiles to reach the 2048 tile.
-- **Checkers** - Capture all opponent pieces to win against another player or an AI opponent. 
 
 ## Features
 - **Dynamic UI Updates**: Real-time game interactions and feedback.
@@ -49,7 +48,6 @@ A collection of classic games implemented in **Java** using **Swing** for GUI de
 4. Memory Matching: Select 2 tiles and if they match you found a pair!
 5. Sudoku: A Classic game of Sudoku, arrange rows and colums in 1-9
 6. TicTacToe: Select either Single or Multiplayer and get 3 in a row!
-7. Checkers: Choose Single or Multiplayer and capture all of your opponent's pieces.
 
 ## Contributing
 Contributions are welcome! If you would like to improve a game or add a new feature:
