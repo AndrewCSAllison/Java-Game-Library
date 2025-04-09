@@ -13,7 +13,7 @@ public class GameLauncher {
     private void showMainMenu() {
         // Create a panel with a grid layout (2 rows, 3 columns)
         JPanel panel = new JPanel(new GridLayout(2, 3, 5, 5)); // 2 rows, 3 columns
-        String[] options = {"Tic-Tac-Toe", "2048", "Hangman", "Memory Matching", "Snake", "Sudoku", "Exit"};
+        String[] options = {"Tic-Tac-Toe", "2048", "Hangman", "Memory Matching", "Snake", "Sudoku", "Checkers", "Exit"};
         
         // Add buttons to the panel
         for (int i = 0; i < options.length; i++) {
@@ -57,8 +57,11 @@ public class GameLauncher {
             case 4: // Snake
                 new SnakeGame();
                 break;
-            case 5:
+            case 5: // Sudoku
                 new SudokuGame();
+                break;
+            case 6 : // Checkers
+                new Checkers();
                 break;
             default: // Exit
                 System.exit(0); // Terminate the program
