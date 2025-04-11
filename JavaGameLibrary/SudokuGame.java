@@ -154,7 +154,19 @@ public class SudokuGame extends JFrame {
         statusLabel.setFont(new Font("Arial", Font.BOLD, 16));
         statusLabel.setHorizontalAlignment(SwingConstants.CENTER);
         mainPanel.add(gridPanel, BorderLayout.CENTER);
-        mainPanel.add(statusLabel, BorderLayout.SOUTH);
+        //mainPanel.add(statusLabel, BorderLayout.SOUTH); //removed, not needed anymore
+
+        // Back to Menu button
+        JButton backButton = new JButton("Back to Menu");
+        backButton.addActionListener(e -> {
+            dispose(); // Close Sudoku window
+            new GameLauncher(); // Open main menu
+        });
+
+        JPanel bottomPanel = new JPanel(new BorderLayout());
+        bottomPanel.add(statusLabel, BorderLayout.CENTER);
+        bottomPanel.add(backButton, BorderLayout.EAST);
+        mainPanel.add(bottomPanel, BorderLayout.SOUTH);
 
         add(mainPanel);
         setVisible(true);
