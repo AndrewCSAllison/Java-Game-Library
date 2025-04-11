@@ -5,7 +5,8 @@ Below is a list of individuals who have contributed to the development of this J
 ## Contributors
 
 - **[Braedyn Thompson] (https://github.com/braaaeeedyn)** – *Initial Creator*
-- **[Andrew Allison](https://github.com/AndrewCSAllison)** – *Added Checkers & Othello games*
+- **[Andrew Allison] (https://github.com/AndrewCSAllison)** – *Added Checkers & Othello games*
+- **[Philip Garbis] (https://github.com/GLITCH-ERR)** - *Added menu back buttons in Hangman, Memory Matching, & Sudoku game modes*
 
 ## How to Contribute
 
